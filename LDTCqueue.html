@@ -1,0 +1,532 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>羅東網球俱樂部 - 雲端同步系統</title>
+    
+    <!-- Custom Favicon (LD Logo) -->
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='25' fill='%231A3C34'/%3E%3Ccircle cx='50' cy='50' r='42' stroke='%23C19A6B' stroke-width='4' fill='none' opacity='0.5'/%3E%3Ctext x='50' y='68' font-family='Arial, sans-serif' font-weight='900' font-size='48' fill='%23C19A6B' text-anchor='middle' style='font-style:italic'%3ELD%3C/text%3E%3C/svg%3E">
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700&family=Noto+Sans+TC:wght@400;700&display=swap" rel="stylesheet">
+    
+    <!-- Firebase SDK (Compatible Version for simpler HTML usage) -->
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'tennis-green': '#ccff00',
+                        'tennis-dark': '#1a1a1a',
+                        'tennis-card': '#2d2d2d',
+                        'ld-bg': '#1A3C34', 
+                        'ld-gold': '#C19A6B',
+                    },
+                    fontFamily: {
+                        'digital': ['Orbitron', 'sans-serif'],
+                        'sans': ['Noto Sans TC', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { background-color: #121212; color: white; overflow: hidden; }
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #2d2d2d; }
+        ::-webkit-scrollbar-thumb { background: #555; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #ccff00; }
+        .animate-pulse-red { animation: pulse-red 1s infinite; }
+        @keyframes pulse-red {
+            0%, 100% { background-color: #2d2d2d; border-color: transparent; }
+            50% { background-color: #450a0a; border-color: #ef4444; }
+        }
+        .btn-touch { transition: transform 0.1s; cursor: pointer; }
+        .btn-touch:active { transform: scale(0.95); }
+        /* Sync Indicator */
+        .sync-dot { height: 10px; width: 10px; background-color: #555; border-radius: 50%; display: inline-block; }
+        .sync-active { background-color: #ccff00; box-shadow: 0 0 5px #ccff00; }
+    </style>
+</head>
+<body class="flex flex-col h-screen p-4 font-sans select-none">
+
+    <!-- Header -->
+    <header class="flex justify-between items-center mb-4 px-2 border-b border-gray-700 pb-2">
+        <div class="flex items-center gap-4">
+            <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='25' fill='%231A3C34'/%3E%3Ccircle cx='50' cy='50' r='42' stroke='%23C19A6B' stroke-width='4' fill='none' opacity='0.5'/%3E%3Ctext x='50' y='68' font-family='Arial, sans-serif' font-weight='900' font-size='48' fill='%23C19A6B' text-anchor='middle' style='font-style:italic'%3ELD%3C/text%3E%3C/svg%3E" 
+                 alt="Logo" class="w-16 h-16 shadow-lg rounded-xl">
+            <h1 class="text-2xl md:text-3xl font-bold tracking-wider text-white flex flex-col justify-center">
+                <span>羅東網球俱樂部</span>
+                <span class="text-tennis-green text-lg font-normal">雲端同步系統 <span id="sync-status" class="sync-dot ml-2" title="資料同步中"></span></span>
+            </h1>
+        </div>
+        <div class="text-right">
+            <div id="current-time" class="text-3xl font-digital text-tennis-green tracking-widest">00:00:00</div>
+            <div id="current-date" class="text-gray-400 text-sm">YYYY-MM-DD</div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="flex-1 grid grid-cols-12 gap-6 min-h-0">
+        <!-- Left: Courts -->
+        <section class="col-span-12 lg:col-span-7 flex flex-col min-h-0">
+            <div id="courts-grid" class="grid grid-cols-1 md:grid-cols-2 gap-4 overflow-y-auto pr-2 pb-2 h-full">
+                <!-- Injected by JS -->
+            </div>
+        </section>
+
+        <!-- Right: Queue -->
+        <section class="col-span-12 lg:col-span-5 flex flex-col bg-gray-800 rounded-2xl border border-gray-700 shadow-2xl overflow-hidden h-full">
+            <div class="p-5 bg-gray-900 border-b border-gray-700 shrink-0">
+                <label class="block text-sm text-tennis-green mb-1 font-bold">新增掛牌球友</label>
+                <div class="flex gap-2">
+                    <input type="text" id="player-input" placeholder="輸入姓名 (例如: 王小明)" 
+                        class="flex-1 bg-gray-800 text-white border border-gray-600 rounded-lg px-4 py-3 text-lg focus:outline-none focus:border-tennis-green focus:ring-1 focus:ring-tennis-green placeholder-gray-500"
+                        onkeypress="handleEnter(event)">
+                    <button onclick="addToQueue()" class="btn-touch bg-white text-black hover:bg-gray-200 font-bold px-6 py-2 rounded-lg whitespace-nowrap">
+                        <i class="fa-solid fa-plus"></i> 掛牌
+                    </button>
+                </div>
+            </div>
+            <div class="bg-gray-800 px-5 py-3 flex justify-between items-center border-b border-gray-700 shrink-0">
+                <span class="text-gray-300 font-bold"><i class="fa-solid fa-list-ol mr-2"></i>等待清單</span>
+                <span class="bg-tennis-green text-black text-xs font-bold px-2 py-1 rounded-full" id="queue-count">0 人</span>
+            </div>
+            <div class="flex-1 overflow-y-auto p-2" id="queue-container">
+                <ul id="queue-list" class="space-y-2"></ul>
+                <div id="empty-queue-msg" class="text-center text-gray-500 mt-10">
+                    <i class="fa-solid fa-clipboard-list text-4xl mb-3"></i>
+                    <p>目前無人排隊</p>
+                </div>
+            </div>
+            <div class="bg-gray-900 p-2 text-center text-xs text-gray-500 shrink-0">
+                <i class="fa-solid fa-circle-info mr-1"></i> 點擊紅色垃圾桶可移除該名單
+            </div>
+        </section>
+    </main>
+
+    <!-- Modal -->
+    <div id="custom-modal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="bg-gray-800 border-2 border-tennis-green rounded-2xl max-w-sm w-full p-6 text-center shadow-2xl transform transition-all scale-100">
+            <div class="mb-4">
+                <i class="fa-solid fa-triangle-exclamation text-4xl text-yellow-400 mb-2"></i>
+                <h3 class="text-2xl font-bold text-white">確認操作</h3>
+            </div>
+            <p id="modal-message" class="text-gray-300 text-lg mb-8">確認？</p>
+            <div class="flex gap-4 justify-center">
+                <button onclick="closeModal()" class="flex-1 btn-touch bg-gray-600 hover:bg-gray-500 text-white font-bold py-3 rounded-xl">取消</button>
+                <button id="modal-confirm-btn" class="flex-1 btn-touch bg-red-600 hover:bg-red-500 text-white font-bold py-3 rounded-xl">確定執行</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ==========================================
+        //  FIREBASE CONFIGURATION (請填入您的設定)
+        // ==========================================
+        const firebaseConfig = {
+  apiKey: "AIzaSyCprSxXuLOSjQQum10GkMYp-00MC8Fw5Gc",
+  authDomain: "ldtcqueue.firebaseapp.com",
+  projectId: "ldtcqueue",
+  storageBucket: "ldtcqueue.firebasestorage.app",
+  messagingSenderId: "721597811044",
+  appId: "1:721597811044:web:0c634bd1ad25b5dc24d271",
+  measurementId: "G-60WDDD8SZ0"
+};
+        // ==========================================
+
+        // Initialize Firebase
+        let db;
+        try {
+            if (!firebaseConfig.apiKey || firebaseConfig.apiKey === "YOUR_API_KEY") {
+                console.warn("Firebase config not set. Using fallback LocalStorage mode for demo.");
+                alert("請注意：尚未設定 Firebase Key，目前僅為單機模式，無法雲端同步。");
+            } else {
+                firebase.initializeApp(firebaseConfig);
+                db = firebase.firestore();
+                console.log("Firebase initialized");
+            }
+        } catch(e) { console.error("Firebase init failed:", e); }
+
+        const CONFIG_DOC_ID = 'clubStatus'; // The single document ID we sync
+        const DEFAULT_SESSION_TIME = 30 * 60;
+        const COURT_IDS = ['4', '5', '6', '7']; 
+        
+        // State
+        let appState = {
+            queue: [], 
+            courts: {} 
+        };
+
+        // Initialize Default State structure
+        COURT_IDS.forEach(id => {
+            appState.courts[id] = { 
+                id: id, status: 'idle', players: [], remaining: DEFAULT_SESSION_TIME, active: false, paused: false 
+            };
+        });
+
+        const intervals = {};
+
+        document.addEventListener('DOMContentLoaded', () => {
+            initCourtsUI(); 
+            startClock();   
+            
+            if (db) {
+                initRealtimeSync();
+            } else {
+                // Fallback to local storage if no DB key provided
+                loadStateLocal();
+                renderAll();
+                startLocalTimers();
+            }
+        });
+
+        // --- Realtime Sync Logic (The Core) ---
+        function initRealtimeSync() {
+            const docRef = db.collection('tennis_club').doc(CONFIG_DOC_ID);
+
+            // Listener: Receives updates from Cloud
+            docRef.onSnapshot((doc) => {
+                document.getElementById('sync-status').classList.add('sync-active');
+                setTimeout(() => document.getElementById('sync-status').classList.remove('sync-active'), 500);
+
+                if (doc.exists) {
+                    const data = doc.data();
+                    // Merge cloud data into local state
+                    appState = data;
+                    renderAll();
+                    syncTimers(); // Ensure timers are running based on cloud state
+                } else {
+                    // First time run, create doc
+                    saveStateCloud(); 
+                }
+            }, (error) => {
+                console.error("Sync error:", error);
+                showToast("連線同步失敗", "error");
+            });
+        }
+
+        // Write to Cloud
+        function saveStateCloud() {
+            if (!db) { saveStateLocal(); return; }
+            
+            db.collection('tennis_club').doc(CONFIG_DOC_ID).set(appState)
+                .catch(err => console.error("Write error:", err));
+        }
+
+        // --- Timer Logic (Hybrid) ---
+        // In a perfect world, we'd use timestamps. To keep code simple and similar to previous logic,
+        // we will let the client "write" the decremented time to cloud every few seconds.
+        // NOTE: This assumes the Kiosk is the "Master" writing time. 
+        // Viewer devices will just receive updates.
+        function startLocalTimers() {
+            COURT_IDS.forEach(id => {
+                if(appState.courts[id].active && !appState.courts[id].paused) {
+                    runTimer(id);
+                }
+            });
+        }
+
+        function syncTimers() {
+            COURT_IDS.forEach(id => {
+                const court = appState.courts[id];
+                // If cloud says active, ensure local timer is running
+                if (court.active && !court.paused) {
+                    if (!intervals[id]) runTimer(id);
+                } else {
+                    // If cloud says paused/idle, stop local timer
+                    if (intervals[id]) {
+                        clearInterval(intervals[id]);
+                        intervals[id] = null;
+                    }
+                }
+            });
+        }
+
+        function runTimer(courtId) {
+            if (intervals[courtId]) clearInterval(intervals[courtId]);
+            intervals[courtId] = setInterval(() => {
+                const court = appState.courts[courtId];
+                if (court.paused || !court.active) return;
+
+                court.remaining--;
+
+                if (court.remaining <= 0) {
+                    handleTimeUp(courtId);
+                }
+
+                updateTimerDisplay(courtId);
+                
+                // Only write to cloud every 5 seconds to save bandwidth/writes
+                // Only the "active controller" needs to do this really, but for simplicity:
+                if (court.remaining % 5 === 0 && db) {
+                    saveStateCloud();
+                } else if (!db) {
+                    saveStateLocal();
+                }
+
+            }, 1000);
+        }
+
+        // --- Actions (Updated to save to Cloud) ---
+        function addToQueue() {
+            const input = document.getElementById('player-input');
+            const name = input.value.trim();
+            if (!name) return showToast('請輸入姓名', 'error');
+            if (appState.queue.includes(name)) return showToast(`${name} 已經在排隊了`, 'warning');
+            
+            let onCourt = false;
+            COURT_IDS.forEach(id => {
+                if(appState.courts[id] && appState.courts[id].players.includes(name)) onCourt = true;
+            });
+            if (onCourt) return showToast(`${name} 正在球場上`, 'error');
+
+            appState.queue.push(name);
+            input.value = '';
+            saveStateCloud(); // Trigger Cloud Update
+            initAudio();
+        }
+
+        function removeFromQueue(index) {
+            openModal('確定要將此人移出等待區嗎？', () => {
+                appState.queue.splice(index, 1);
+                saveStateCloud();
+            });
+        }
+
+        function startCourt(courtId) {
+            initAudio();
+            if (appState.queue.length === 0) return showToast('無人排隊', 'warning');
+
+            const court = appState.courts[courtId];
+            const countToTake = Math.min(4, appState.queue.length);
+            const nextPlayers = appState.queue.splice(0, countToTake);
+
+            court.status = 'active';
+            court.active = true;
+            court.paused = false;
+            court.players = nextPlayers;
+            court.remaining = DEFAULT_SESSION_TIME;
+
+            saveStateCloud(); // Writes to DB, listeners will update UI
+            runTimer(courtId); // Start local ticking immediately for responsiveness
+        }
+
+        function resetCourt(courtId) {
+            const court = appState.courts[courtId];
+            if(intervals[courtId]) clearInterval(intervals[courtId]);
+            intervals[courtId] = null;
+
+            court.status = 'idle';
+            court.active = false;
+            court.paused = false;
+            court.players = [];
+            court.remaining = DEFAULT_SESSION_TIME;
+
+            saveStateCloud();
+        }
+
+        function handleTimeUp(courtId) {
+            if(intervals[courtId]) clearInterval(intervals[courtId]);
+            intervals[courtId] = null;
+
+            const court = appState.courts[courtId];
+            court.remaining = 0;
+            court.status = 'finished';
+            
+            playBeep();
+            saveStateCloud();
+        }
+
+        function togglePause(courtId) {
+            const court = appState.courts[courtId];
+            court.paused = !court.paused;
+            saveStateCloud();
+        }
+
+        function adjustTime(courtId, seconds) {
+            const court = appState.courts[courtId];
+            court.remaining += seconds;
+            if (court.remaining > 0 && court.status === 'finished') {
+                court.status = 'active';
+                runTimer(courtId);
+            }
+            saveStateCloud();
+        }
+
+        // --- Rendering (Same as before) ---
+        function renderAll() {
+            renderQueue();
+            COURT_IDS.forEach(id => renderCourt(id));
+        }
+
+        function initCourtsUI() {
+            const container = document.getElementById('courts-grid');
+            container.innerHTML = '';
+            COURT_IDS.forEach(id => {
+                container.innerHTML += `
+                <div id="court-${id}-card" class="bg-tennis-card rounded-2xl p-4 shadow-lg border-l-8 border-gray-500 relative transition-all duration-300 flex flex-col justify-between min-h-[220px]">
+                    <div class="flex justify-between items-start mb-2">
+                        <h2 class="text-2xl font-bold flex items-center gap-2">
+                            <span class="bg-gray-700 px-3 py-1 rounded text-white min-w-[3rem] text-center">${id}</span>
+                            <span id="status-text-${id}" class="text-gray-400 text-lg">閒置中</span>
+                        </h2>
+                        <div id="timer-display-${id}" class="font-digital text-4xl text-gray-500 tracking-widest hidden">30:00</div>
+                        <button id="btn-start-${id}" onclick="startCourt('${id}')" class="btn-touch bg-tennis-green text-black font-bold text-lg px-6 py-2 rounded-full shadow hover:bg-yellow-300">
+                            <i class="fa-solid fa-play mr-1"></i> 進場
+                        </button>
+                    </div>
+                    <div class="bg-black/30 rounded-xl p-3 flex-1 mb-3 flex items-center justify-center">
+                        <div id="players-list-${id}" class="w-full grid grid-cols-2 gap-2 text-base text-gray-400 text-center">
+                            <div class="col-span-2 py-1">等待球員進場...</div>
+                        </div>
+                    </div>
+                    <div id="controls-${id}" class="hidden flex gap-2 justify-end border-t border-gray-700 pt-2">
+                        <button onclick="adjustTime('${id}', 300)" class="btn-touch bg-blue-600 hover:bg-blue-500 text-white px-3 py-1.5 rounded-lg font-bold text-sm"><i class="fa-solid fa-plus"></i> 5分</button>
+                        <button id="btn-pause-${id}" onclick="togglePause('${id}')" class="btn-touch bg-yellow-600 hover:bg-yellow-500 text-white px-3 py-1.5 rounded-lg font-bold text-sm min-w-[80px]"><i class="fa-solid fa-pause"></i> 暫停</button>
+                        <button onclick="openForceEndModal('${id}')" class="btn-touch bg-red-600 hover:bg-red-500 text-white px-3 py-1.5 rounded-lg font-bold text-sm"><i class="fa-solid fa-stop"></i> 結束</button>
+                    </div>
+                </div>`;
+            });
+        }
+
+        function renderQueue() {
+            const list = document.getElementById('queue-list');
+            const emptyMsg = document.getElementById('empty-queue-msg');
+            const countBadge = document.getElementById('queue-count');
+            if (!list) return;
+            list.innerHTML = '';
+            countBadge.innerText = `${appState.queue.length} 人`;
+            if (appState.queue.length === 0) {
+                emptyMsg.style.display = 'block';
+            } else {
+                emptyMsg.style.display = 'none';
+                appState.queue.forEach((name, index) => {
+                    list.innerHTML += `
+                    <li class="flex justify-between items-center bg-gray-700/50 p-3 rounded-lg border-l-4 border-tennis-green">
+                        <div class="flex items-center gap-3">
+                            <span class="bg-gray-600 text-white w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold">${index + 1}</span>
+                            <span class="text-lg font-bold">${escapeHtml(name)}</span>
+                        </div>
+                        <button onclick="removeFromQueue(${index})" class="text-gray-500 hover:text-red-500 p-2"><i class="fa-solid fa-trash"></i></button>
+                    </li>`;
+                });
+            }
+        }
+
+        function renderCourt(courtId) {
+            const court = appState.courts[courtId];
+            if (!court) return;
+            const card = document.getElementById(`court-${courtId}-card`);
+            const statusText = document.getElementById(`status-text-${courtId}`);
+            const timerDisplay = document.getElementById(`timer-display-${courtId}`);
+            const startBtn = document.getElementById(`btn-start-${courtId}`);
+            const playersList = document.getElementById(`players-list-${courtId}`);
+            const controls = document.getElementById(`controls-${courtId}`);
+            const pauseBtn = document.getElementById(`btn-pause-${courtId}`);
+            if(!card) return;
+
+            card.classList.remove('border-tennis-green', 'border-gray-500', 'border-red-500', 'animate-pulse-red');
+
+            if (court.status === 'idle') {
+                card.classList.add('border-gray-500');
+                statusText.innerText = '閒置中';
+                statusText.className = 'text-gray-400 text-lg';
+                timerDisplay.classList.add('hidden');
+                startBtn.classList.remove('hidden');
+                controls.classList.add('hidden');
+                playersList.innerHTML = '<div class="col-span-2 py-2 text-gray-500">等待球員進場...</div>';
+            } else {
+                if(court.status === 'active') {
+                    card.classList.add('border-tennis-green');
+                    statusText.innerText = '使用中';
+                    statusText.className = 'text-tennis-green text-lg animate-pulse';
+                } else if (court.status === 'finished') {
+                    card.classList.add('border-red-500', 'animate-pulse-red');
+                    statusText.innerText = '時間到';
+                    statusText.className = 'text-red-500 text-lg font-bold';
+                }
+                timerDisplay.classList.remove('hidden');
+                startBtn.classList.add('hidden');
+                controls.classList.remove('hidden');
+                playersList.innerHTML = '';
+                court.players.forEach(p => playersList.innerHTML += `<div class="bg-gray-700 text-white rounded p-1 font-bold truncate text-sm">${escapeHtml(p)}</div>`);
+            }
+
+            if(court.paused) {
+                pauseBtn.innerHTML = '<i class="fa-solid fa-play"></i>';
+                pauseBtn.className = "btn-touch bg-green-600 hover:bg-green-500 text-white px-3 py-1.5 rounded-lg font-bold text-sm min-w-[80px]";
+            } else {
+                pauseBtn.innerHTML = '<i class="fa-solid fa-pause"></i>';
+                pauseBtn.className = "btn-touch bg-yellow-600 hover:bg-yellow-500 text-white px-3 py-1.5 rounded-lg font-bold text-sm min-w-[80px]";
+            }
+            updateTimerDisplay(courtId);
+        }
+
+        function updateTimerDisplay(courtId) {
+            const remaining = appState.courts[courtId].remaining;
+            const display = document.getElementById(`timer-display-${courtId}`);
+            const m = Math.floor(Math.max(0, remaining) / 60);
+            const s = Math.max(0, remaining) % 60;
+            display.innerText = `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+            if (remaining <= 60 && remaining > 0) display.className = 'font-digital text-4xl text-red-400 tracking-widest';
+            else if (remaining <= 0) display.className = 'font-digital text-4xl text-red-600 tracking-widest';
+            else display.className = 'font-digital text-4xl text-tennis-green tracking-widest';
+        }
+
+        // --- Utils & Fallback ---
+        function saveStateLocal() { localStorage.setItem('tennis_kiosk_state_v3', JSON.stringify(appState)); }
+        function loadStateLocal() {
+            try {
+                const stored = localStorage.getItem('tennis_kiosk_state_v3');
+                if (stored) {
+                    const parsed = JSON.parse(stored);
+                    if(parsed.queue) appState.queue = parsed.queue;
+                    if(parsed.courts) COURT_IDS.forEach(id => { if(parsed.courts[id]) appState.courts[id] = parsed.courts[id]; });
+                }
+            } catch(e) {}
+        }
+        function startClock() {
+            setInterval(() => {
+                const now = new Date();
+                document.getElementById('current-time').innerText = now.toLocaleTimeString('zh-TW', { hour12: false });
+                document.getElementById('current-date').innerText = now.toLocaleDateString('zh-TW', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+            }, 1000);
+        }
+        function showToast(msg, type = 'info') { openModal(msg, () => {}); }
+        function escapeHtml(text) { if (!text) return text; return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;"); }
+        function handleEnter(e) { if (e.key === 'Enter') addToQueue(); }
+        
+        // Audio
+        let audioCtx;
+        function initAudio() { if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)(); if (audioCtx.state === 'suspended') audioCtx.resume(); }
+        function playBeep() {
+            if (!audioCtx) initAudio();
+            const o = audioCtx.createOscillator(); const g = audioCtx.createGain();
+            o.connect(g); g.connect(audioCtx.destination);
+            o.type = 'square'; o.frequency.setValueAtTime(440, audioCtx.currentTime); o.frequency.exponentialRampToValueAtTime(880, audioCtx.currentTime + 0.1);
+            g.gain.setValueAtTime(0.5, audioCtx.currentTime); g.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 1);
+            o.start(); o.stop(audioCtx.currentTime + 1);
+        }
+
+        // Modal Logic
+        function openModal(message, confirmCallback) {
+            const modal = document.getElementById('custom-modal');
+            document.getElementById('modal-message').innerText = message;
+            document.getElementById('modal-confirm-btn').onclick = () => { confirmCallback(); closeModal(); };
+            modal.classList.remove('hidden');
+        }
+        function closeModal() { document.getElementById('custom-modal').classList.add('hidden'); }
+        function openForceEndModal(courtId) { openModal(`確定要強制結束 ${courtId} 號球場？`, () => resetCourt(courtId)); }
+
+    </script>
+</body>
+</html>
