@@ -239,7 +239,7 @@
                     </div>
 
                     <!-- Member List Link -->
-                    <div class="bg-white p-8 rounded-[2rem] flex items-center justify-between group cursor-pointer hover:bg-club-wood transition-colors duration-300 border border-gray-200 shadow-sm" onclick="alert('少爺，會員名冊 PDF 尚未上傳。')">
+                    <div class="bg-white p-8 rounded-[2rem] flex items-center justify-between group cursor-pointer hover:bg-club-wood transition-colors duration-300 border border-gray-200 shadow-sm" onclick="alert('會員名冊 PDF 尚未上傳。')">
                         <div>
                             <h3 class="text-xl font-black italic mb-1 text-club-green group-hover:text-white">會員名單</h3>
                             <p class="text-gray-500 text-sm group-hover:text-white/90 font-bold">查看本年度完整名冊</p>
@@ -631,7 +631,7 @@
                     // Simulation mode if no URL provided
                     await new Promise(r => setTimeout(r, 1500)); 
                     console.log('Simulated Form Data:', Object.fromEntries(formData));
-                    alert('少爺，這是預覽模式。請在代碼中設定 GOOGLE_SCRIPT_URL 才能真正傳送到 Excel。');
+                    alert('這是預覽模式。請在代碼中設定 GOOGLE_SCRIPT_URL 才能真正傳送到 Excel。');
                 } else {
                     // Send to Google Sheets
                     // Note: 'no-cors' is often needed for GAS Web Apps if handled via simple POST
@@ -640,7 +640,7 @@
                         body: formData,
                         mode: 'no-cors' 
                     });
-                    alert('少爺，您的訊息已成功送出！');
+                    alert('您的訊息已成功送出！');
                 }
                 
                 // Reset Form
