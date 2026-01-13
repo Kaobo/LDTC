@@ -55,6 +55,15 @@
         .sync-dot { height: 10px; width: 10px; background-color: #555; border-radius: 50%; display: inline-block; }
         .sync-active { background-color: #ccff00; box-shadow: 0 0 5px #ccff00; }
         .offline-banner { background-color: #ef4444; color: white; text-align: center; padding: 4px; font-weight: bold; font-size: 0.8rem; display: none; }
+        
+        /* Admin Only Utility */
+        .admin-only { display: none !important; }
+        .is-admin .admin-only { display: flex !important; }
+        .is-admin span.admin-only { display: inline-block !important; }
+        
+        /* Viewer Mode Specifics */
+        .viewer-mode-text { display: block; }
+        .is-admin .viewer-mode-text { display: none; }
     </style>
 </head>
 <body class="flex flex-col h-screen font-sans select-none">
@@ -72,7 +81,11 @@
                      alt="Logo" class="w-16 h-16 shadow-lg rounded-xl">
                 <h1 class="text-2xl md:text-3xl font-bold tracking-wider text-white flex flex-col justify-center">
                     <span>羅東網球俱樂部</span>
-                    <span class="text-tennis-green text-lg font-normal">數位排隊系統 <span id="sync-status" class="sync-dot ml-2" title="資料同步中"></span></span>
+                    <span class="text-tennis-green text-lg font-normal">
+                        數位排隊系統 
+                        <span id="sync-status" class="sync-dot ml-2" title="資料同步中"></span>
+                        <span class="admin-only text-xs bg-red-600 text-white px-2 py-0.5 rounded ml-2 align-middle">ADMIN</span>
+                    </span>
                 </h1>
             </div>
             <div class="text-right">
@@ -92,9 +105,10 @@
 
             <!-- Right: Queue -->
             <section class="col-span-12 lg:col-span-5 flex flex-col bg-gray-800 rounded-2xl border border-gray-700 shadow-2xl overflow-hidden h-full">
-                <div class="p-5 bg-gray-900 border-b border-gray-700 shrink-0">
+                <!-- Input Area (Admin Only) -->
+                <div class="p-5 bg-gray-900 border-b border-gray-700 shrink-0 admin-only">
                     <label class="block text-sm text-tennis-green mb-1 font-bold">新增掛牌球友</label>
-                    <div class="flex gap-2">
+                    <div class="flex gap-2 w-full">
                         <input type="text" id="player-input" placeholder="輸入姓名 (例如: 王小明)" 
                             class="flex-1 bg-gray-800 text-white border border-gray-600 rounded-lg px-4 py-3 text-lg focus:outline-none focus:border-tennis-green focus:ring-1 focus:ring-tennis-green placeholder-gray-500"
                             onkeypress="handleEnter(event)">
@@ -103,6 +117,12 @@
                         </button>
                     </div>
                 </div>
+                
+                <!-- Viewer Mode Message -->
+                <div class="p-5 bg-gray-900 border-b border-gray-700 shrink-0 viewer-mode-text text-center">
+                    <p class="text-gray-400 text-sm">目前為觀看模式，如需掛牌請至現場操作。</p>
+                </div>
+
                 <div class="bg-gray-800 px-5 py-3 flex justify-between items-center border-b border-gray-700 shrink-0">
                     <span class="text-gray-300 font-bold"><i class="fa-solid fa-list-ol mr-2"></i>等待清單</span>
                     <span class="bg-tennis-green text-black text-xs font-bold px-2 py-1 rounded-full" id="queue-count">0 人</span>
@@ -114,7 +134,7 @@
                         <p>目前無人排隊</p>
                     </div>
                 </div>
-                <div class="bg-gray-900 p-2 text-center text-xs text-gray-500 shrink-0">
+                <div class="bg-gray-900 p-2 text-center text-xs text-gray-500 shrink-0 admin-only">
                     <i class="fa-solid fa-circle-info mr-1"></i> 點擊紅色垃圾桶可移除該名單
                 </div>
             </section>
@@ -152,13 +172,22 @@
         // ==========================================
 
         let db = null;
-        let isOfflineMode = false; // Circuit Breaker Flag
+        let isOfflineMode = false;
+
+        // Check Admin Mode via URL parameter
+        const urlParams = new URLSearchParams(window.location.search);
+        const IS_ADMIN = urlParams.get('role') === 'admin';
+
+        // Apply Admin Class to Body
+        if (IS_ADMIN) {
+            document.body.classList.add('is-admin');
+        }
 
         // Initialize Firebase
         try {
             if (!firebaseConfig.apiKey || firebaseConfig.apiKey.includes("YOUR")) {
                 console.warn("No API Key.");
-                isOfflineMode = true; // Default to offline if no key
+                isOfflineMode = true; 
             } else {
                 firebase.initializeApp(firebaseConfig);
                 db = firebase.firestore();
@@ -207,18 +236,16 @@
 
         // --- Circuit Breaker Logic ---
         function switchToOfflineMode(reason) {
-            if (isOfflineMode && document.getElementById('offline-warning').style.display === 'block') return; // Already in offline mode
+            if (isOfflineMode && document.getElementById('offline-warning').style.display === 'block') return; 
 
             console.warn(`Switching to Offline Mode: ${reason}`);
             isOfflineMode = true;
-            db = null; // Detach DB to prevent future calls
+            db = null; 
 
-            // Show UI Warning
             const banner = document.getElementById('offline-warning');
             banner.innerHTML = `<i class="fa-solid fa-cloud-bolt mr-2"></i> ${reason}`;
             banner.style.display = 'block';
 
-            // Load last known local state to ensure continuity
             loadStateLocal();
             renderAll();
             startLocalTimers();
@@ -240,56 +267,22 @@
                     appState = data;
                     renderAll();
                     syncTimers(); 
-                    // Backup to local just in case we crash later
                     saveStateLocal(); 
                 } else {
-                    saveStateCloud(); 
+                    if(!isOfflineMode && IS_ADMIN) docRef.set(appState).catch(console.error);
                 }
             }, (error) => {
-                // FAIL-SAFE TRIGGER: Quota exceeded or Permission Denied
                 if (error.code === 'resource-exhausted') {
                     switchToOfflineMode("雲端額度已滿，已自動暫停雲端服務");
                 } else if (error.code === 'permission-denied') {
                     switchToOfflineMode("權限不足，已切換至單機模式");
                 } else {
                     console.error("Sync error:", error);
-                    // For transient network errors, maybe don't kill it immediately, 
-                    // but for this request, let's be safe.
-                    // switchToOfflineMode("連線中斷，已切換至單機模式");
                 }
             });
         }
 
-        // Write to Cloud with Fail-safe
-        function saveStateCloud() {
-            // First level check
-            if (isOfflineMode || !db) { 
-                saveStateLocal(); 
-                return; 
-            }
-            
-            db.collection('tennis_club').doc(CONFIG_DOC_ID).set(appState)
-                .then(() => {
-                    // Success: also save local backup
-                    saveStateLocal();
-                })
-                .catch(error => {
-                    console.error("Write error:", error);
-                    // FAIL-SAFE TRIGGER on Write
-                    if (error.code === 'resource-exhausted') {
-                        switchToOfflineMode("寫入額度已滿，已自動暫停雲端服務");
-                        // Retry save locally
-                        saveStateLocal();
-                    } else {
-                        // Just fallback for this write, but maybe keep trying?
-                        // If we want strict fail-safe, switch mode now.
-                        console.warn("Write failed, saving locally temporarily.");
-                        saveStateLocal();
-                    }
-                });
-        }
-
-        // --- Timer Logic (Local & Cloud Hybrid) ---
+        // --- Timer Logic ---
         function startLocalTimers() {
             COURT_IDS.forEach(id => {
                 if(appState.courts[id].active && !appState.courts[id].paused) {
@@ -320,13 +313,11 @@
                 const court = appState.courts[courtId];
                 if (court.paused || !court.active) return;
 
-                // If we have a timestamp, use it (Cloud Mode / Accurate Mode)
                 if (court.endTimestamp) {
                     const now = Date.now();
                     const secondsLeft = Math.ceil((court.endTimestamp - now) / 1000);
                     court.remaining = secondsLeft;
                 } else {
-                    // Fallback for pure local mode without timestamp sync logic yet
                     court.remaining--;
                 }
 
@@ -336,17 +327,17 @@
 
                 updateTimerDisplay(courtId);
                 
-                // If offline, save periodically (legacy behavior)
-                // If online, we rely on timestamp, no need to save periodically
-                if (isOfflineMode && court.remaining % 5 === 0) {
+                if (isOfflineMode && court.remaining % 5 === 0 && IS_ADMIN) {
                     saveStateLocal();
                 }
-
             }, 1000);
         }
 
-        // --- Actions ---
+        // --- Actions (Admin Guarded) ---
+        
         function addToQueue() {
+            if (!IS_ADMIN) return; // Guard
+
             const input = document.getElementById('player-input');
             const name = input.value.trim();
             if (!name) return showToast('請輸入姓名', 'error');
@@ -358,109 +349,247 @@
             });
             if (onCourt) return showToast(`${name} 正在球場上`, 'error');
 
-            appState.queue.push(name);
             input.value = '';
-            saveStateCloud(); 
-            initAudio();
-            input.focus(); // Added explicit focus here
+            input.focus();
+
+            if (!isOfflineMode && db) {
+                const docRef = db.collection('tennis_club').doc(CONFIG_DOC_ID);
+                db.runTransaction((transaction) => {
+                    return transaction.get(docRef).then((doc) => {
+                        if (!doc.exists) throw "Doc missing";
+                        const data = doc.data();
+                        const currentQueue = data.queue || [];
+                        if (currentQueue.includes(name)) throw "Duplicate";
+                        currentQueue.push(name);
+                        transaction.update(docRef, { queue: currentQueue });
+                    });
+                }).then(() => initAudio())
+                  .catch((err) => {
+                      if(err === "Duplicate") showToast("重複掛牌", "warning");
+                      else console.error("Tx Error", err);
+                  });
+            } else {
+                appState.queue.push(name);
+                saveStateLocal();
+                renderQueue(); 
+                initAudio();
+            }
         }
 
         function removeFromQueue(index) {
+            if (!IS_ADMIN) return; // Guard
+
             openModal('確定要將此人移出等待區嗎？', () => {
-                appState.queue.splice(index, 1);
-                saveStateCloud(); 
+                if (!isOfflineMode && db) {
+                    const docRef = db.collection('tennis_club').doc(CONFIG_DOC_ID);
+                    db.runTransaction((transaction) => {
+                        return transaction.get(docRef).then((doc) => {
+                            if (!doc.exists) throw "Doc missing";
+                            const data = doc.data();
+                            const currentQueue = data.queue || [];
+                            if (index >= 0 && index < currentQueue.length) {
+                                currentQueue.splice(index, 1);
+                                transaction.update(docRef, { queue: currentQueue });
+                            }
+                        });
+                    }).catch(console.error);
+                } else {
+                    appState.queue.splice(index, 1);
+                    saveStateLocal();
+                    renderQueue();
+                }
             });
         }
 
         function startCourt(courtId) {
+            if (!IS_ADMIN) return; // Guard
             initAudio();
             if (appState.queue.length === 0) return showToast('無人排隊', 'warning');
 
-            const court = appState.courts[courtId];
-            const countToTake = Math.min(4, appState.queue.length);
-            const nextPlayers = appState.queue.splice(0, countToTake);
+            if (!isOfflineMode && db) {
+                const docRef = db.collection('tennis_club').doc(CONFIG_DOC_ID);
+                db.runTransaction((transaction) => {
+                    return transaction.get(docRef).then((doc) => {
+                        if (!doc.exists) throw "Doc missing";
+                        const data = doc.data();
+                        const queue = data.queue || [];
+                        const courts = data.courts || {};
+                        if (queue.length === 0) throw "Queue Empty"; 
 
-            const now = Date.now();
-            const durationMs = DEFAULT_SESSION_TIME * 1000;
+                        const countToTake = Math.min(4, queue.length);
+                        const nextPlayers = queue.splice(0, countToTake);
+                        const now = Date.now();
+                        const durationMs = DEFAULT_SESSION_TIME * 1000;
 
-            court.status = 'active';
-            court.active = true;
-            court.paused = false;
-            court.players = nextPlayers;
-            court.remaining = DEFAULT_SESSION_TIME;
-            court.endTimestamp = now + durationMs; 
-
-            saveStateCloud(); 
-            runTimer(courtId); 
+                        const newCourtState = {
+                            id: courtId,
+                            status: 'active',
+                            active: true,
+                            paused: false,
+                            players: nextPlayers,
+                            remaining: DEFAULT_SESSION_TIME,
+                            endTimestamp: now + durationMs
+                        };
+                        courts[courtId] = newCourtState;
+                        transaction.update(docRef, { queue: queue, courts: courts });
+                        return newCourtState;
+                    });
+                }).then((newCourtState) => {
+                    if(intervals[courtId]) clearInterval(intervals[courtId]);
+                    appState.courts[courtId] = newCourtState; 
+                    renderCourt(courtId);
+                    runTimer(courtId); 
+                }).catch((err) => {
+                    if (err === "Queue Empty") showToast("無人排隊 (已被他人操作)", "warning");
+                    else console.error("Tx Error", err);
+                });
+            } else {
+                const court = appState.courts[courtId];
+                const countToTake = Math.min(4, appState.queue.length);
+                const nextPlayers = appState.queue.splice(0, countToTake);
+                court.status = 'active';
+                court.active = true;
+                court.paused = false;
+                court.players = nextPlayers;
+                court.remaining = DEFAULT_SESSION_TIME;
+                court.endTimestamp = Date.now() + (DEFAULT_SESSION_TIME * 1000);
+                saveStateLocal();
+                renderAll();
+                runTimer(courtId);
+            }
         }
 
         function resetCourt(courtId) {
-            const court = appState.courts[courtId];
+            if (!IS_ADMIN) return;
+            const courtData = {
+                id: courtId,
+                status: 'idle',
+                active: false,
+                paused: false,
+                players: [],
+                remaining: DEFAULT_SESSION_TIME,
+                endTimestamp: null
+            };
+
+            if(!isOfflineMode && db) {
+                 // Simple update is fine for reset
+                 const update = {};
+                 update[`courts.${courtId}`] = courtData;
+                 db.collection('tennis_club').doc(CONFIG_DOC_ID).update(update).catch(console.error);
+            } else {
+                appState.courts[courtId] = courtData;
+                saveStateLocal();
+                renderCourt(courtId);
+            }
             if(intervals[courtId]) clearInterval(intervals[courtId]);
             intervals[courtId] = null;
-
-            court.status = 'idle';
-            court.active = false;
-            court.paused = false;
-            court.players = [];
-            court.remaining = DEFAULT_SESSION_TIME;
-            court.endTimestamp = null;
-
-            saveStateCloud(); 
         }
 
         function handleTimeUp(courtId) {
             if(intervals[courtId]) clearInterval(intervals[courtId]);
             intervals[courtId] = null;
 
-            const court = appState.courts[courtId];
-            court.remaining = 0;
-            court.status = 'finished';
-            court.endTimestamp = null;
-            
+            if(!isOfflineMode && db && IS_ADMIN) {
+                // Only Admin device triggers DB update for finished state to prevent conflicts
+                const update = {};
+                update[`courts.${courtId}.status`] = 'finished';
+                update[`courts.${courtId}.remaining`] = 0;
+                update[`courts.${courtId}.endTimestamp`] = null;
+                db.collection('tennis_club').doc(CONFIG_DOC_ID).update(update).catch(console.error);
+            } else if (isOfflineMode || IS_ADMIN) {
+                const court = appState.courts[courtId];
+                court.remaining = 0;
+                court.status = 'finished';
+                court.endTimestamp = null;
+                if(isOfflineMode) saveStateLocal();
+                renderCourt(courtId);
+            }
             playBeep();
-            saveStateCloud(); 
         }
 
         function togglePause(courtId) {
+            if (!IS_ADMIN) return;
             const court = appState.courts[courtId];
             const now = Date.now();
-            
+            let newPausedState, newEndTimestamp, newRemaining;
+
             if (!court.paused) {
                 if (court.endTimestamp) {
                     const secondsLeft = Math.ceil((court.endTimestamp - now) / 1000);
-                    court.remaining = Math.max(0, secondsLeft);
-                }
-                court.endTimestamp = null; 
-                court.paused = true;
+                    newRemaining = Math.max(0, secondsLeft);
+                } else { newRemaining = court.remaining; }
+                newPausedState = true;
+                newEndTimestamp = null;
             } else {
-                court.endTimestamp = now + (court.remaining * 1000);
-                court.paused = false;
-                runTimer(courtId);
+                newRemaining = court.remaining;
+                newEndTimestamp = now + (newRemaining * 1000);
+                newPausedState = false;
             }
-            saveStateCloud(); 
+
+            if(!isOfflineMode && db) {
+                const update = {};
+                update[`courts.${courtId}.paused`] = newPausedState;
+                update[`courts.${courtId}.remaining`] = newRemaining;
+                update[`courts.${courtId}.endTimestamp`] = newEndTimestamp;
+                db.collection('tennis_club').doc(CONFIG_DOC_ID).update(update).catch(console.error);
+                court.paused = newPausedState;
+                court.remaining = newRemaining;
+                court.endTimestamp = newEndTimestamp;
+                if(!newPausedState) runTimer(courtId);
+                renderCourt(courtId);
+            } else {
+                court.paused = newPausedState;
+                court.remaining = newRemaining;
+                court.endTimestamp = newEndTimestamp;
+                saveStateLocal();
+                if(!newPausedState) runTimer(courtId);
+                renderCourt(courtId);
+            }
         }
 
         function adjustTime(courtId, seconds) {
+            if (!IS_ADMIN) return;
             const court = appState.courts[courtId];
+            let newEndTimestamp = court.endTimestamp;
+            let newRemaining = court.remaining;
+            let newStatus = court.status;
             
             if (court.active && !court.paused && court.endTimestamp) {
-                court.endTimestamp += (seconds * 1000);
+                newEndTimestamp += (seconds * 1000);
                 const now = Date.now();
-                court.remaining = Math.ceil((court.endTimestamp - now) / 1000);
+                newRemaining = Math.ceil((newEndTimestamp - now) / 1000);
             } else {
-                court.remaining += seconds;
+                newRemaining += seconds;
             }
 
-            if (court.remaining > 0 && court.status === 'finished') {
-                court.status = 'active';
+            if (newRemaining > 0 && court.status === 'finished') {
+                newStatus = 'active';
                 if (!court.paused) {
                     const now = Date.now();
-                    court.endTimestamp = now + (court.remaining * 1000);
-                    runTimer(courtId);
+                    newEndTimestamp = now + (newRemaining * 1000);
                 }
             }
-            saveStateCloud(); 
+
+            if(!isOfflineMode && db) {
+                const update = {};
+                update[`courts.${courtId}.remaining`] = newRemaining;
+                update[`courts.${courtId}.endTimestamp`] = newEndTimestamp;
+                update[`courts.${courtId}.status`] = newStatus;
+                db.collection('tennis_club').doc(CONFIG_DOC_ID).update(update).catch(console.error);
+                
+                court.remaining = newRemaining;
+                court.endTimestamp = newEndTimestamp;
+                court.status = newStatus;
+                if(newStatus === 'active' && !court.paused) runTimer(courtId);
+                renderCourt(courtId);
+            } else {
+                court.remaining = newRemaining;
+                court.endTimestamp = newEndTimestamp;
+                court.status = newStatus;
+                saveStateLocal();
+                if(newStatus === 'active' && !court.paused) runTimer(courtId);
+                renderCourt(courtId);
+            }
         }
 
         // --- Rendering ---
@@ -481,7 +610,9 @@
                             <span id="status-text-${id}" class="text-gray-400 text-lg">閒置中</span>
                         </h2>
                         <div id="timer-display-${id}" class="font-digital text-4xl text-gray-500 tracking-widest hidden">30:00</div>
-                        <button id="btn-start-${id}" onclick="startCourt('${id}')" class="btn-touch bg-tennis-green text-black font-bold text-lg px-6 py-2 rounded-full shadow hover:bg-yellow-300">
+                        
+                        <!-- Admin Only Start Button -->
+                        <button id="btn-start-${id}" onclick="startCourt('${id}')" class="admin-only btn-touch bg-tennis-green text-black font-bold text-lg px-6 py-2 rounded-full shadow hover:bg-yellow-300">
                             <i class="fa-solid fa-play mr-1"></i> 進場
                         </button>
                     </div>
@@ -490,7 +621,9 @@
                             <div class="col-span-2 py-1">等待球員進場...</div>
                         </div>
                     </div>
-                    <div id="controls-${id}" class="hidden flex gap-2 justify-end border-t border-gray-700 pt-2">
+                    
+                    <!-- Admin Only Controls -->
+                    <div id="controls-${id}" class="admin-only hidden flex gap-2 justify-end border-t border-gray-700 pt-2">
                         <button onclick="adjustTime('${id}', 300)" class="btn-touch bg-blue-600 hover:bg-blue-500 text-white px-3 py-1.5 rounded-lg font-bold text-sm"><i class="fa-solid fa-plus"></i> 5分</button>
                         <button id="btn-pause-${id}" onclick="togglePause('${id}')" class="btn-touch bg-yellow-600 hover:bg-yellow-500 text-white px-3 py-1.5 rounded-lg font-bold text-sm min-w-[80px]"><i class="fa-solid fa-pause"></i> 暫停</button>
                         <button onclick="openForceEndModal('${id}')" class="btn-touch bg-red-600 hover:bg-red-500 text-white px-3 py-1.5 rounded-lg font-bold text-sm"><i class="fa-solid fa-stop"></i> 結束</button>
@@ -511,13 +644,16 @@
             } else {
                 emptyMsg.style.display = 'none';
                 appState.queue.forEach((name, index) => {
+                    const deleteBtn = IS_ADMIN ? 
+                        `<button onclick="removeFromQueue(${index})" class="text-gray-500 hover:text-red-500 p-2 admin-only"><i class="fa-solid fa-trash"></i></button>` : '';
+                    
                     list.innerHTML += `
                     <li class="flex justify-between items-center bg-gray-700/50 p-3 rounded-lg border-l-4 border-tennis-green">
                         <div class="flex items-center gap-3">
                             <span class="bg-gray-600 text-white w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold">${index + 1}</span>
                             <span class="text-lg font-bold">${escapeHtml(name)}</span>
                         </div>
-                        <button onclick="removeFromQueue(${index})" class="text-gray-500 hover:text-red-500 p-2"><i class="fa-solid fa-trash"></i></button>
+                        ${deleteBtn}
                     </li>`;
                 });
             }
@@ -542,7 +678,7 @@
                 statusText.innerText = '閒置中';
                 statusText.className = 'text-gray-400 text-lg';
                 timerDisplay.classList.add('hidden');
-                startBtn.classList.remove('hidden');
+                if(IS_ADMIN) startBtn.classList.remove('hidden'); 
                 controls.classList.add('hidden');
                 playersList.innerHTML = '<div class="col-span-2 py-2 text-gray-500">等待球員進場...</div>';
             } else {
@@ -557,17 +693,19 @@
                 }
                 timerDisplay.classList.remove('hidden');
                 startBtn.classList.add('hidden');
-                controls.classList.remove('hidden');
+                if(IS_ADMIN) controls.classList.remove('hidden'); 
                 playersList.innerHTML = '';
                 court.players.forEach(p => playersList.innerHTML += `<div class="bg-gray-700 text-white rounded p-1 font-bold truncate text-sm">${escapeHtml(p)}</div>`);
             }
 
-            if(court.paused) {
-                pauseBtn.innerHTML = '<i class="fa-solid fa-play"></i>';
-                pauseBtn.className = "btn-touch bg-green-600 hover:bg-green-500 text-white px-3 py-1.5 rounded-lg font-bold text-sm min-w-[80px]";
-            } else {
-                pauseBtn.innerHTML = '<i class="fa-solid fa-pause"></i>';
-                pauseBtn.className = "btn-touch bg-yellow-600 hover:bg-yellow-500 text-white px-3 py-1.5 rounded-lg font-bold text-sm min-w-[80px]";
+            if(pauseBtn) {
+                if(court.paused) {
+                    pauseBtn.innerHTML = '<i class="fa-solid fa-play"></i>';
+                    pauseBtn.className = "btn-touch bg-green-600 hover:bg-green-500 text-white px-3 py-1.5 rounded-lg font-bold text-sm min-w-[80px]";
+                } else {
+                    pauseBtn.innerHTML = '<i class="fa-solid fa-pause"></i>';
+                    pauseBtn.className = "btn-touch bg-yellow-600 hover:bg-yellow-500 text-white px-3 py-1.5 rounded-lg font-bold text-sm min-w-[80px]";
+                }
             }
             updateTimerDisplay(courtId);
         }
@@ -585,11 +723,8 @@
 
         // --- Utils & Fallback ---
         function saveStateLocal() { 
-            try {
-                localStorage.setItem('tennis_kiosk_state_v3', JSON.stringify(appState)); 
-            } catch(e) { console.error("Local storage failed"); }
+            try { localStorage.setItem('tennis_kiosk_state_v3', JSON.stringify(appState)); } catch(e) {}
         }
-        
         function loadStateLocal() {
             try {
                 const stored = localStorage.getItem('tennis_kiosk_state_v3');
@@ -600,7 +735,6 @@
                 }
             } catch(e) {}
         }
-        
         function startClock() {
             setInterval(() => {
                 const now = new Date();
@@ -612,7 +746,6 @@
         function escapeHtml(text) { if (!text) return text; return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;"); }
         function handleEnter(e) { if (e.key === 'Enter') addToQueue(); }
         
-        // Audio
         let audioCtx;
         function initAudio() { if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)(); if (audioCtx.state === 'suspended') audioCtx.resume(); }
         function playBeep() {
@@ -624,7 +757,6 @@
             o.start(); o.stop(audioCtx.currentTime + 1);
         }
 
-        // Modal Logic
         function openModal(message, confirmCallback) {
             const modal = document.getElementById('custom-modal');
             document.getElementById('modal-message').innerText = message;
@@ -632,7 +764,10 @@
             modal.classList.remove('hidden');
         }
         function closeModal() { document.getElementById('custom-modal').classList.add('hidden'); }
-        function openForceEndModal(courtId) { openModal(`確定要強制結束 ${courtId} 號球場？`, () => resetCourt(courtId)); }
+        function openForceEndModal(courtId) { 
+            if(!IS_ADMIN) return;
+            openModal(`確定要強制結束 ${courtId} 號球場？`, () => resetCourt(courtId)); 
+        }
 
     </script>
 </body>
