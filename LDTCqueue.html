@@ -39,11 +39,15 @@
         }
     </script>
     <style>
-        body { background-color: #121212; color: white; overflow: hidden; }
-        ::-webkit-scrollbar { width: 8px; }
+        /* Mobile: Allow scroll, Desktop: Fixed */
+        body { background-color: #121212; color: white; }
+        
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 6px; }
         ::-webkit-scrollbar-track { background: #2d2d2d; }
         ::-webkit-scrollbar-thumb { background: #555; border-radius: 4px; }
         ::-webkit-scrollbar-thumb:hover { background: #ccff00; }
+        
         .animate-pulse-red { animation: pulse-red 1s infinite; }
         @keyframes pulse-red {
             0%, 100% { background-color: #2d2d2d; border-color: transparent; }
@@ -51,10 +55,12 @@
         }
         .btn-touch { transition: transform 0.1s; cursor: pointer; }
         .btn-touch:active { transform: scale(0.95); }
+        
         /* Sync Indicator */
-        .sync-dot { height: 10px; width: 10px; background-color: #555; border-radius: 50%; display: inline-block; }
+        .sync-dot { height: 8px; width: 8px; background-color: #555; border-radius: 50%; display: inline-block; margin-bottom: 2px; }
         .sync-active { background-color: #ccff00; box-shadow: 0 0 5px #ccff00; }
-        .offline-banner { background-color: #ef4444; color: white; text-align: center; padding: 4px; font-weight: bold; font-size: 0.8rem; display: none; }
+        
+        .offline-banner { background-color: #ef4444; color: white; text-align: center; padding: 8px; font-weight: bold; font-size: 0.9rem; display: none; position: sticky; top: 0; z-index: 50; }
         
         /* Admin Only Utility */
         .admin-only { display: none !important; }
@@ -66,97 +72,101 @@
         .is-admin .viewer-mode-text { display: none; }
     </style>
 </head>
-<body class="flex flex-col h-screen font-sans select-none">
+<body class="flex flex-col min-h-screen lg:h-screen font-sans select-none lg:overflow-hidden overflow-x-hidden">
 
     <!-- Fail-safe Warning Banner -->
     <div id="offline-warning" class="offline-banner">
-        <i class="fa-solid fa-cloud-bolt mr-2"></i> 雲端服務暫停 (額度已滿或連線中斷) - 已切換至單機模式
+        <i class="fa-solid fa-cloud-bolt mr-2"></i> 雲端服務暫停 - 已切換至單機模式
     </div>
 
-    <div class="p-4 flex flex-col h-full">
+    <div class="flex-1 flex flex-col h-full p-2 md:p-4">
         <!-- Header -->
-        <header class="flex justify-between items-center mb-4 px-2 border-b border-gray-700 pb-2">
+        <header class="flex flex-wrap justify-between items-center mb-4 px-1 md:px-2 border-b border-gray-700 pb-2 gap-2">
             <!-- Left: Logo & Title -->
-            <div class="flex items-center gap-4">
+            <div class="flex items-center gap-3 max-w-[60%]">
                 <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='25' fill='%231A3C34'/%3E%3Ccircle cx='50' cy='50' r='42' stroke='%23C19A6B' stroke-width='4' fill='none' opacity='0.5'/%3E%3Ctext x='50' y='68' font-family='Arial, sans-serif' font-weight='900' font-size='48' fill='%23C19A6B' text-anchor='middle' style='font-style:italic'%3ELD%3C/text%3E%3C/svg%3E" 
-                     alt="Logo" class="w-16 h-16 shadow-lg rounded-xl">
-                <h1 class="text-2xl md:text-3xl font-bold tracking-wider text-white flex flex-col justify-center">
-                    <span>羅東網球俱樂部</span>
-                    <span class="text-tennis-green text-lg font-normal">
-                        數位排隊系統 
+                     alt="Logo" class="w-12 h-12 md:w-16 md:h-16 shadow-lg rounded-xl shrink-0">
+                <h1 class="text-xl md:text-3xl font-bold tracking-wider text-white flex flex-col justify-center leading-tight">
+                    <span class="truncate">羅東網球</span>
+                    <span class="text-tennis-green text-xs md:text-lg font-normal flex items-center">
+                        排隊系統 
                         <span id="sync-status" class="sync-dot ml-2" title="資料同步中"></span>
-                        <span class="admin-only text-xs bg-red-600 text-white px-2 py-0.5 rounded ml-2 align-middle">ADMIN</span>
+                        <span class="admin-only text-[10px] md:text-xs bg-red-600 text-white px-1.5 py-0.5 rounded ml-2">ADMIN</span>
                     </span>
                 </h1>
             </div>
 
-            <!-- Right: Extra Button & Time -->
-            <div class="flex items-center gap-4">
+            <!-- Right: Buttons & Time -->
+            <div class="flex items-center gap-2 md:gap-4 ml-auto">
                 
-                <!-- NEW BUTTON: Member List PDF -->
-                <!-- 請將 href 改為您的 PDF 實際路徑 -->
+                <!-- Member List PDF -->
                 <a href="members_list.pdf" target="_blank" 
-                   class="btn-touch bg-blue-700 hover:brightness-110 text-white font-bold px-4 py-3 rounded-xl shadow-lg flex items-center gap-2 transition-all">
-                    <i class="fa-solid fa-address-book text-xl"></i>
-                    <span class="hidden md:inline">會員名冊</span>
+                   class="btn-touch bg-blue-700 hover:brightness-110 text-white font-bold px-3 py-2 md:px-4 md:py-3 rounded-xl shadow-lg flex items-center gap-2 transition-all text-sm md:text-base">
+                    <i class="fa-solid fa-address-book text-lg"></i>
+                    <span class="hidden md:inline">名冊</span>
                 </a>
 
-                <!-- BUTTON: Official Link / Community -->
+                <!-- Community Link -->
                 <a href="https://kaobo.github.io/LDTC" target="_blank" 
-                   class="btn-touch bg-ld-gold hover:brightness-110 text-black font-bold px-4 py-3 rounded-xl shadow-lg flex items-center gap-2 transition-all">
-                    <i class="fa-solid fa-users text-xl"></i>
-                    <span class="hidden md:inline">連到官網</span>
+                   class="btn-touch bg-ld-gold hover:brightness-110 text-black font-bold px-3 py-2 md:px-4 md:py-3 rounded-xl shadow-lg flex items-center gap-2 transition-all text-sm md:text-base">
+                    <i class="fa-solid fa-users text-lg"></i>
+                    <span class="hidden md:inline">官網</span>
                 </a>
 
-                <div class="text-right hidden sm:block border-l border-gray-600 pl-4">
-                    <div id="current-time" class="text-3xl font-digital text-tennis-green tracking-widest">00:00:00</div>
-                    <div id="current-date" class="text-gray-400 text-sm">YYYY-MM-DD</div>
+                <div class="text-right hidden lg:block border-l border-gray-600 pl-4">
+                    <div id="current-time" class="text-3xl font-digital text-tennis-green tracking-widest">00:00</div>
+                    <div id="current-date" class="text-gray-400 text-xs">YYYY-MM-DD</div>
                 </div>
             </div>
         </header>
 
         <!-- Main Content -->
-        <main class="flex-1 grid grid-cols-12 gap-6 min-h-0">
-            <!-- Left: Courts -->
-            <section class="col-span-12 lg:col-span-7 flex flex-col min-h-0">
-                <div id="courts-grid" class="grid grid-cols-1 md:grid-cols-2 gap-4 overflow-y-auto pr-2 pb-2 h-full">
+        <main class="flex-1 grid grid-cols-12 gap-4 lg:gap-6 lg:min-h-0 lg:overflow-hidden h-auto lg:h-full">
+            
+            <!-- Left: Courts (Top on Mobile) -->
+            <section class="col-span-12 lg:col-span-7 flex flex-col h-auto lg:h-full lg:min-h-0">
+                <div id="courts-grid" class="grid grid-cols-1 md:grid-cols-2 gap-4 lg:overflow-y-auto lg:pr-2 lg:pb-2 lg:h-full">
                     <!-- Injected by JS -->
                 </div>
             </section>
 
-            <!-- Right: Queue -->
-            <section class="col-span-12 lg:col-span-5 flex flex-col bg-gray-800 rounded-2xl border border-gray-700 shadow-2xl overflow-hidden h-full">
+            <!-- Right: Queue (Bottom on Mobile) -->
+            <section class="col-span-12 lg:col-span-5 flex flex-col bg-gray-800 rounded-2xl border border-gray-700 shadow-2xl overflow-hidden h-auto lg:h-full mt-4 lg:mt-0">
+                
                 <!-- Input Area (Admin Only) -->
-                <div class="p-5 bg-gray-900 border-b border-gray-700 shrink-0 admin-only">
+                <div class="p-4 md:p-5 bg-gray-900 border-b border-gray-700 shrink-0 admin-only">
                     <label class="block text-sm text-tennis-green mb-1 font-bold">新增掛牌球友</label>
                     <div class="flex gap-2 w-full">
-                        <input type="text" id="player-input" placeholder="輸入姓名 (例如: 王小明)" 
-                            class="flex-1 bg-gray-800 text-white border border-gray-600 rounded-lg px-4 py-3 text-lg focus:outline-none focus:border-tennis-green focus:ring-1 focus:ring-tennis-green placeholder-gray-500"
+                        <input type="text" id="player-input" placeholder="輸入姓名" 
+                            class="flex-1 bg-gray-800 text-white border border-gray-600 rounded-lg px-3 py-2 text-base md:text-lg focus:outline-none focus:border-tennis-green focus:ring-1 focus:ring-tennis-green placeholder-gray-500"
                             onkeypress="handleEnter(event)">
-                        <button onclick="addToQueue()" class="btn-touch bg-white text-black hover:bg-gray-200 font-bold px-6 py-2 rounded-lg whitespace-nowrap">
-                            <i class="fa-solid fa-plus"></i> 掛牌
+                        <button onclick="addToQueue()" class="btn-touch bg-white text-black hover:bg-gray-200 font-bold px-4 py-2 rounded-lg whitespace-nowrap">
+                            <i class="fa-solid fa-plus"></i>
                         </button>
                     </div>
                 </div>
                 
                 <!-- Viewer Mode Message -->
-                <div class="p-5 bg-gray-900 border-b border-gray-700 shrink-0 viewer-mode-text text-center">
-                    <p class="text-gray-400 text-sm">目前為觀看模式，如需掛牌請至現場操作。</p>
+                <div class="p-3 bg-gray-900 border-b border-gray-700 shrink-0 viewer-mode-text text-center">
+                    <p class="text-gray-400 text-xs md:text-sm">觀看模式 (請至現場掛牌)</p>
                 </div>
 
-                <div class="bg-gray-800 px-5 py-3 flex justify-between items-center border-b border-gray-700 shrink-0">
-                    <span class="text-gray-300 font-bold"><i class="fa-solid fa-list-ol mr-2"></i>等待清單</span>
-                    <span class="bg-tennis-green text-black text-xs font-bold px-2 py-1 rounded-full" id="queue-count">0 人</span>
+                <div class="bg-gray-800 px-4 py-2 md:px-5 md:py-3 flex justify-between items-center border-b border-gray-700 shrink-0">
+                    <span class="text-gray-300 font-bold text-sm md:text-base"><i class="fa-solid fa-list-ol mr-2"></i>等待清單</span>
+                    <span class="bg-tennis-green text-black text-xs font-bold px-2 py-1 rounded-full" id="queue-count">0</span>
                 </div>
-                <div class="flex-1 overflow-y-auto p-2" id="queue-container">
+                
+                <!-- Queue List: Fixed height on mobile to allow scrolling inside, Auto on Desktop -->
+                <div class="flex-1 p-2 md:p-3 overflow-y-auto h-[400px] lg:h-auto" id="queue-container">
                     <ul id="queue-list" class="space-y-2"></ul>
                     <div id="empty-queue-msg" class="text-center text-gray-500 mt-10">
-                        <i class="fa-solid fa-clipboard-list text-4xl mb-3"></i>
-                        <p>目前無人排隊</p>
+                        <i class="fa-solid fa-clipboard-list text-3xl md:text-4xl mb-3"></i>
+                        <p class="text-sm">目前無人排隊</p>
                     </div>
                 </div>
-                <div class="bg-gray-900 p-2 text-center text-xs text-gray-500 shrink-0 admin-only">
-                    <i class="fa-solid fa-circle-info mr-1"></i> 點擊紅色垃圾桶可移除該名單
+                
+                <div class="bg-gray-900 p-2 text-center text-[10px] md:text-xs text-gray-500 shrink-0 admin-only">
+                    <i class="fa-solid fa-circle-info mr-1"></i> 點擊垃圾桶移除
                 </div>
             </section>
         </main>
@@ -199,10 +209,7 @@
         const urlParams = new URLSearchParams(window.location.search);
         const IS_ADMIN = urlParams.get('role') === 'admin';
 
-        // Apply Admin Class to Body
-        if (IS_ADMIN) {
-            document.body.classList.add('is-admin');
-        }
+        if (IS_ADMIN) document.body.classList.add('is-admin');
 
         // Initialize Firebase
         try {
@@ -223,23 +230,13 @@
         const DEFAULT_SESSION_TIME = 30 * 60;
         const COURT_IDS = ['4', '5', '6', '7']; 
         
-        // State
         let appState = {
             queue: [], 
             courts: {} 
         };
 
-        // Initialize Default State
         COURT_IDS.forEach(id => {
-            appState.courts[id] = { 
-                id: id, 
-                status: 'idle', 
-                players: [], 
-                remaining: DEFAULT_SESSION_TIME, 
-                endTimestamp: null, 
-                active: false, 
-                paused: false 
-            };
+            appState.courts[id] = { id: id, status: 'idle', players: [], remaining: DEFAULT_SESSION_TIME, endTimestamp: null, active: false, paused: false };
         });
 
         const intervals = {};
@@ -255,37 +252,28 @@
             }
         });
 
-        // --- Circuit Breaker Logic ---
         function switchToOfflineMode(reason) {
             if (isOfflineMode && document.getElementById('offline-warning').style.display === 'block') return; 
-
             console.warn(`Switching to Offline Mode: ${reason}`);
             isOfflineMode = true;
             db = null; 
-
             const banner = document.getElementById('offline-warning');
             banner.innerHTML = `<i class="fa-solid fa-cloud-bolt mr-2"></i> ${reason}`;
             banner.style.display = 'block';
-
             loadStateLocal();
             renderAll();
             startLocalTimers();
             showToast(reason, 'error');
         }
 
-        // --- Realtime Sync Logic ---
         function initRealtimeSync() {
             if (isOfflineMode) return;
-
             const docRef = db.collection('tennis_club').doc(CONFIG_DOC_ID);
-
             docRef.onSnapshot((doc) => {
                 document.getElementById('sync-status').classList.add('sync-active');
                 setTimeout(() => document.getElementById('sync-status').classList.remove('sync-active'), 500);
-
                 if (doc.exists) {
-                    const data = doc.data();
-                    appState = data;
+                    appState = doc.data();
                     renderAll();
                     syncTimers(); 
                     saveStateLocal(); 
@@ -293,22 +281,15 @@
                     if(!isOfflineMode && IS_ADMIN) docRef.set(appState).catch(console.error);
                 }
             }, (error) => {
-                if (error.code === 'resource-exhausted') {
-                    switchToOfflineMode("雲端額度已滿，已自動暫停雲端服務");
-                } else if (error.code === 'permission-denied') {
-                    switchToOfflineMode("權限不足，已切換至單機模式");
-                } else {
-                    console.error("Sync error:", error);
-                }
+                if (error.code === 'resource-exhausted') switchToOfflineMode("雲端額度已滿，已自動暫停雲端服務");
+                else if (error.code === 'permission-denied') switchToOfflineMode("權限不足，已切換至單機模式");
+                else console.error("Sync error:", error);
             });
         }
 
-        // --- Timer Logic ---
         function startLocalTimers() {
             COURT_IDS.forEach(id => {
-                if(appState.courts[id].active && !appState.courts[id].paused) {
-                    runTimer(id);
-                }
+                if(appState.courts[id].active && !appState.courts[id].paused) runTimer(id);
             });
         }
 
@@ -318,10 +299,7 @@
                 if (court.active && !court.paused && court.endTimestamp) {
                     if (!intervals[id]) runTimer(id);
                 } else {
-                    if (intervals[id]) {
-                        clearInterval(intervals[id]);
-                        intervals[id] = null;
-                    }
+                    if (intervals[id]) { clearInterval(intervals[id]); intervals[id] = null; }
                     updateTimerDisplay(id); 
                 }
             });
@@ -329,36 +307,24 @@
 
         function runTimer(courtId) {
             if (intervals[courtId]) clearInterval(intervals[courtId]);
-            
             intervals[courtId] = setInterval(() => {
                 const court = appState.courts[courtId];
                 if (court.paused || !court.active) return;
-
                 if (court.endTimestamp) {
                     const now = Date.now();
-                    const secondsLeft = Math.ceil((court.endTimestamp - now) / 1000);
-                    court.remaining = secondsLeft;
+                    court.remaining = Math.ceil((court.endTimestamp - now) / 1000);
                 } else {
                     court.remaining--;
                 }
-
-                if (court.remaining <= 0) {
-                    handleTimeUp(courtId);
-                }
-
+                if (court.remaining <= 0) handleTimeUp(courtId);
                 updateTimerDisplay(courtId);
-                
-                if (isOfflineMode && court.remaining % 5 === 0 && IS_ADMIN) {
-                    saveStateLocal();
-                }
+                if (isOfflineMode && court.remaining % 5 === 0 && IS_ADMIN) saveStateLocal();
             }, 1000);
         }
 
-        // --- Actions (Admin Guarded) ---
-        
+        // --- Actions ---
         function addToQueue() {
-            if (!IS_ADMIN) return; // Guard
-
+            if (!IS_ADMIN) return;
             const input = document.getElementById('player-input');
             const name = input.value.trim();
             if (!name) return showToast('請輸入姓名', 'error');
@@ -384,8 +350,7 @@
                         currentQueue.push(name);
                         transaction.update(docRef, { queue: currentQueue });
                     });
-                }).then(() => initAudio())
-                  .catch((err) => {
+                }).then(() => initAudio()).catch((err) => {
                       if(err === "Duplicate") showToast("重複掛牌", "warning");
                       else console.error("Tx Error", err);
                   });
@@ -398,8 +363,7 @@
         }
 
         function removeFromQueue(index) {
-            if (!IS_ADMIN) return; // Guard
-
+            if (!IS_ADMIN) return;
             openModal('確定要將此人移出等待區嗎？', () => {
                 if (!isOfflineMode && db) {
                     const docRef = db.collection('tennis_club').doc(CONFIG_DOC_ID);
@@ -423,7 +387,7 @@
         }
 
         function startCourt(courtId) {
-            if (!IS_ADMIN) return; // Guard
+            if (!IS_ADMIN) return;
             initAudio();
             if (appState.queue.length === 0) return showToast('無人排隊', 'warning');
 
@@ -436,21 +400,11 @@
                         const queue = data.queue || [];
                         const courts = data.courts || {};
                         if (queue.length === 0) throw "Queue Empty"; 
-
                         const countToTake = Math.min(4, queue.length);
                         const nextPlayers = queue.splice(0, countToTake);
                         const now = Date.now();
                         const durationMs = DEFAULT_SESSION_TIME * 1000;
-
-                        const newCourtState = {
-                            id: courtId,
-                            status: 'active',
-                            active: true,
-                            paused: false,
-                            players: nextPlayers,
-                            remaining: DEFAULT_SESSION_TIME,
-                            endTimestamp: now + durationMs
-                        };
+                        const newCourtState = { id: courtId, status: 'active', active: true, paused: false, players: nextPlayers, remaining: DEFAULT_SESSION_TIME, endTimestamp: now + durationMs };
                         courts[courtId] = newCourtState;
                         transaction.update(docRef, { queue: queue, courts: courts });
                         return newCourtState;
@@ -461,7 +415,7 @@
                     renderCourt(courtId);
                     runTimer(courtId); 
                 }).catch((err) => {
-                    if (err === "Queue Empty") showToast("無人排隊 (已被他人操作)", "warning");
+                    if (err === "Queue Empty") showToast("無人排隊", "warning");
                     else console.error("Tx Error", err);
                 });
             } else {
@@ -482,20 +436,9 @@
 
         function resetCourt(courtId) {
             if (!IS_ADMIN) return;
-            const courtData = {
-                id: courtId,
-                status: 'idle',
-                active: false,
-                paused: false,
-                players: [],
-                remaining: DEFAULT_SESSION_TIME,
-                endTimestamp: null
-            };
-
+            const courtData = { id: courtId, status: 'idle', active: false, paused: false, players: [], remaining: DEFAULT_SESSION_TIME, endTimestamp: null };
             if(!isOfflineMode && db) {
-                 // Simple update is fine for reset
-                 const update = {};
-                 update[`courts.${courtId}`] = courtData;
+                 const update = {}; update[`courts.${courtId}`] = courtData;
                  db.collection('tennis_club').doc(CONFIG_DOC_ID).update(update).catch(console.error);
             } else {
                 appState.courts[courtId] = courtData;
@@ -509,9 +452,7 @@
         function handleTimeUp(courtId) {
             if(intervals[courtId]) clearInterval(intervals[courtId]);
             intervals[courtId] = null;
-
             if(!isOfflineMode && db && IS_ADMIN) {
-                // Only Admin device triggers DB update for finished state to prevent conflicts
                 const update = {};
                 update[`courts.${courtId}.status`] = 'finished';
                 update[`courts.${courtId}.remaining`] = 0;
@@ -533,7 +474,6 @@
             const court = appState.courts[courtId];
             const now = Date.now();
             let newPausedState, newEndTimestamp, newRemaining;
-
             if (!court.paused) {
                 if (court.endTimestamp) {
                     const secondsLeft = Math.ceil((court.endTimestamp - now) / 1000);
@@ -546,22 +486,17 @@
                 newEndTimestamp = now + (newRemaining * 1000);
                 newPausedState = false;
             }
-
             if(!isOfflineMode && db) {
                 const update = {};
                 update[`courts.${courtId}.paused`] = newPausedState;
                 update[`courts.${courtId}.remaining`] = newRemaining;
                 update[`courts.${courtId}.endTimestamp`] = newEndTimestamp;
                 db.collection('tennis_club').doc(CONFIG_DOC_ID).update(update).catch(console.error);
-                court.paused = newPausedState;
-                court.remaining = newRemaining;
-                court.endTimestamp = newEndTimestamp;
+                court.paused = newPausedState; court.remaining = newRemaining; court.endTimestamp = newEndTimestamp;
                 if(!newPausedState) runTimer(courtId);
                 renderCourt(courtId);
             } else {
-                court.paused = newPausedState;
-                court.remaining = newRemaining;
-                court.endTimestamp = newEndTimestamp;
+                court.paused = newPausedState; court.remaining = newRemaining; court.endTimestamp = newEndTimestamp;
                 saveStateLocal();
                 if(!newPausedState) runTimer(courtId);
                 renderCourt(courtId);
@@ -574,50 +509,33 @@
             let newEndTimestamp = court.endTimestamp;
             let newRemaining = court.remaining;
             let newStatus = court.status;
-            
             if (court.active && !court.paused && court.endTimestamp) {
                 newEndTimestamp += (seconds * 1000);
                 const now = Date.now();
                 newRemaining = Math.ceil((newEndTimestamp - now) / 1000);
-            } else {
-                newRemaining += seconds;
-            }
-
+            } else { newRemaining += seconds; }
             if (newRemaining > 0 && court.status === 'finished') {
                 newStatus = 'active';
-                if (!court.paused) {
-                    const now = Date.now();
-                    newEndTimestamp = now + (newRemaining * 1000);
-                }
+                if (!court.paused) { const now = Date.now(); newEndTimestamp = now + (newRemaining * 1000); }
             }
-
             if(!isOfflineMode && db) {
                 const update = {};
                 update[`courts.${courtId}.remaining`] = newRemaining;
                 update[`courts.${courtId}.endTimestamp`] = newEndTimestamp;
                 update[`courts.${courtId}.status`] = newStatus;
                 db.collection('tennis_club').doc(CONFIG_DOC_ID).update(update).catch(console.error);
-                
-                court.remaining = newRemaining;
-                court.endTimestamp = newEndTimestamp;
-                court.status = newStatus;
+                court.remaining = newRemaining; court.endTimestamp = newEndTimestamp; court.status = newStatus;
                 if(newStatus === 'active' && !court.paused) runTimer(courtId);
                 renderCourt(courtId);
             } else {
-                court.remaining = newRemaining;
-                court.endTimestamp = newEndTimestamp;
-                court.status = newStatus;
+                court.remaining = newRemaining; court.endTimestamp = newEndTimestamp; court.status = newStatus;
                 saveStateLocal();
                 if(newStatus === 'active' && !court.paused) runTimer(courtId);
                 renderCourt(courtId);
             }
         }
 
-        // --- Rendering ---
-        function renderAll() {
-            renderQueue();
-            COURT_IDS.forEach(id => renderCourt(id));
-        }
+        function renderAll() { renderQueue(); COURT_IDS.forEach(id => renderCourt(id)); }
 
         function initCourtsUI() {
             const container = document.getElementById('courts-grid');
@@ -628,24 +546,22 @@
                     <div class="flex justify-between items-start mb-2">
                         <h2 class="text-2xl font-bold flex items-center gap-2">
                             <span class="bg-gray-700 px-3 py-1 rounded text-white min-w-[3rem] text-center">${id}</span>
-                            <span id="status-text-${id}" class="text-gray-400 text-lg">閒置中</span>
+                            <span id="status-text-${id}" class="text-gray-400 text-base md:text-lg">閒置中</span>
                         </h2>
-                        <div id="timer-display-${id}" class="font-digital text-4xl text-gray-500 tracking-widest hidden">30:00</div>
-                        
-                        <!-- Admin Only Start Button -->
-                        <button id="btn-start-${id}" onclick="startCourt('${id}')" class="admin-only btn-touch bg-tennis-green text-black font-bold text-lg px-6 py-2 rounded-full shadow hover:bg-yellow-300">
-                            <i class="fa-solid fa-play mr-1"></i> 進場
+                        <div id="timer-display-${id}" class="font-digital text-3xl md:text-4xl text-gray-500 tracking-widest hidden">30:00</div>
+                        <button id="btn-start-${id}" onclick="startCourt('${id}')" class="admin-only btn-touch bg-tennis-green text-black font-bold text-base md:text-lg px-4 py-2 md:px-6 md:py-2 rounded-full shadow hover:bg-yellow-300">
+                            <i class="fa-solid fa-play mr-1"></i> <span class="hidden md:inline">進場</span>
                         </button>
                     </div>
-                    <div class="bg-black/30 rounded-xl p-3 flex-1 mb-3 flex items-center justify-center">
-                        <div id="players-list-${id}" class="w-full grid grid-cols-2 gap-2 text-base text-gray-400 text-center">
+                    <div class="bg-black/30 rounded-xl p-2 md:p-3 flex-1 mb-2 md:mb-3 flex items-center justify-center">
+                        <div id="players-list-${id}" class="w-full grid grid-cols-2 gap-2 text-sm md:text-base text-gray-400 text-center">
                             <div class="col-span-2 py-1">等待球員進場...</div>
                         </div>
                     </div>
-                    
-                    <!-- Admin Only Controls -->
                     <div id="controls-${id}" class="admin-only hidden flex gap-2 justify-end border-t border-gray-700 pt-2">
-                         <button onclick="openForceEndModal('${id}')" class="btn-touch bg-red-600 hover:bg-red-500 text-white px-3 py-1.5 rounded-lg font-bold text-sm"><i class="fa-solid fa-stop"></i> 結束</button>
+                        <button onclick="adjustTime('${id}', 300)" class="btn-touch bg-blue-600 hover:bg-blue-500 text-white px-3 py-1.5 rounded-lg font-bold text-xs md:text-sm"><i class="fa-solid fa-plus"></i></button>
+                        <button id="btn-pause-${id}" onclick="togglePause('${id}')" class="btn-touch bg-yellow-600 hover:bg-yellow-500 text-white px-3 py-1.5 rounded-lg font-bold text-xs md:text-sm min-w-[60px] md:min-w-[80px]"><i class="fa-solid fa-pause"></i> 暫停</button>
+                        <button onclick="openForceEndModal('${id}')" class="btn-touch bg-red-600 hover:bg-red-500 text-white px-3 py-1.5 rounded-lg font-bold text-xs md:text-sm"><i class="fa-solid fa-stop"></i> 結束</button>
                     </div>
                 </div>`;
             });
@@ -667,10 +583,10 @@
                         `<button onclick="removeFromQueue(${index})" class="text-gray-500 hover:text-red-500 p-2 admin-only"><i class="fa-solid fa-trash"></i></button>` : '';
                     
                     list.innerHTML += `
-                    <li class="flex justify-between items-center bg-gray-700/50 p-3 rounded-lg border-l-4 border-tennis-green">
+                    <li class="flex justify-between items-center bg-gray-700/50 p-2 md:p-3 rounded-lg border-l-4 border-tennis-green">
                         <div class="flex items-center gap-3">
                             <span class="bg-gray-600 text-white w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold">${index + 1}</span>
-                            <span class="text-lg font-bold">${escapeHtml(name)}</span>
+                            <span class="text-base md:text-lg font-bold">${escapeHtml(name)}</span>
                         </div>
                         ${deleteBtn}
                     </li>`;
@@ -695,7 +611,7 @@
             if (court.status === 'idle') {
                 card.classList.add('border-gray-500');
                 statusText.innerText = '閒置中';
-                statusText.className = 'text-gray-400 text-lg';
+                statusText.className = 'text-gray-400 text-base md:text-lg';
                 timerDisplay.classList.add('hidden');
                 if(IS_ADMIN) startBtn.classList.remove('hidden'); 
                 controls.classList.add('hidden');
@@ -704,26 +620,26 @@
                 if(court.status === 'active') {
                     card.classList.add('border-tennis-green');
                     statusText.innerText = '使用中';
-                    statusText.className = 'text-tennis-green text-lg animate-pulse';
+                    statusText.className = 'text-tennis-green text-base md:text-lg animate-pulse';
                 } else if (court.status === 'finished') {
                     card.classList.add('border-red-500', 'animate-pulse-red');
                     statusText.innerText = '時間到';
-                    statusText.className = 'text-red-500 text-lg font-bold';
+                    statusText.className = 'text-red-500 text-base md:text-lg font-bold';
                 }
                 timerDisplay.classList.remove('hidden');
                 startBtn.classList.add('hidden');
                 if(IS_ADMIN) controls.classList.remove('hidden'); 
                 playersList.innerHTML = '';
-                court.players.forEach(p => playersList.innerHTML += `<div class="bg-gray-700 text-white rounded p-1 font-bold truncate text-sm">${escapeHtml(p)}</div>`);
+                court.players.forEach(p => playersList.innerHTML += `<div class="bg-gray-700 text-white rounded p-1 font-bold truncate text-sm md:text-base">${escapeHtml(p)}</div>`);
             }
 
             if(pauseBtn) {
                 if(court.paused) {
                     pauseBtn.innerHTML = '<i class="fa-solid fa-play"></i>';
-                    pauseBtn.className = "btn-touch bg-green-600 hover:bg-green-500 text-white px-3 py-1.5 rounded-lg font-bold text-sm min-w-[80px]";
+                    pauseBtn.className = "btn-touch bg-green-600 hover:bg-green-500 text-white px-3 py-1.5 rounded-lg font-bold text-xs md:text-sm min-w-[60px] md:min-w-[80px]";
                 } else {
                     pauseBtn.innerHTML = '<i class="fa-solid fa-pause"></i>';
-                    pauseBtn.className = "btn-touch bg-yellow-600 hover:bg-yellow-500 text-white px-3 py-1.5 rounded-lg font-bold text-sm min-w-[80px]";
+                    pauseBtn.className = "btn-touch bg-yellow-600 hover:bg-yellow-500 text-white px-3 py-1.5 rounded-lg font-bold text-xs md:text-sm min-w-[60px] md:min-w-[80px]";
                 }
             }
             updateTimerDisplay(courtId);
@@ -735,60 +651,22 @@
             const m = Math.floor(Math.max(0, remaining) / 60);
             const s = Math.max(0, remaining) % 60;
             display.innerText = `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
-            if (remaining <= 60 && remaining > 0) display.className = 'font-digital text-4xl text-red-400 tracking-widest';
-            else if (remaining <= 0) display.className = 'font-digital text-4xl text-red-600 tracking-widest';
-            else display.className = 'font-digital text-4xl text-tennis-green tracking-widest';
+            if (remaining <= 60 && remaining > 0) display.className = 'font-digital text-3xl md:text-4xl text-red-400 tracking-widest';
+            else if (remaining <= 0) display.className = 'font-digital text-3xl md:text-4xl text-red-600 tracking-widest';
+            else display.className = 'font-digital text-3xl md:text-4xl text-tennis-green tracking-widest';
         }
 
-        // --- Utils & Fallback ---
-        function saveStateLocal() { 
-            try { localStorage.setItem('tennis_kiosk_state_v3', JSON.stringify(appState)); } catch(e) {}
-        }
-        function loadStateLocal() {
-            try {
-                const stored = localStorage.getItem('tennis_kiosk_state_v3');
-                if (stored) {
-                    const parsed = JSON.parse(stored);
-                    if(parsed.queue) appState.queue = parsed.queue;
-                    if(parsed.courts) COURT_IDS.forEach(id => { if(parsed.courts[id]) appState.courts[id] = parsed.courts[id]; });
-                }
-            } catch(e) {}
-        }
-        function startClock() {
-            setInterval(() => {
-                const now = new Date();
-                document.getElementById('current-time').innerText = now.toLocaleTimeString('zh-TW', { hour12: false });
-                document.getElementById('current-date').innerText = now.toLocaleDateString('zh-TW', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
-            }, 1000);
-        }
+        function saveStateLocal() { try { localStorage.setItem('tennis_kiosk_state_v3', JSON.stringify(appState)); } catch(e) {} }
+        function loadStateLocal() { try { const stored = localStorage.getItem('tennis_kiosk_state_v3'); if (stored) { const parsed = JSON.parse(stored); if(parsed.queue) appState.queue = parsed.queue; if(parsed.courts) COURT_IDS.forEach(id => { if(parsed.courts[id]) appState.courts[id] = parsed.courts[id]; }); } } catch(e) {} }
+        function startClock() { setInterval(() => { const now = new Date(); document.getElementById('current-time').innerText = now.toLocaleTimeString('zh-TW', { hour12: false }); document.getElementById('current-date').innerText = now.toLocaleDateString('zh-TW', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }); }, 1000); }
         function showToast(msg, type = 'info') { openModal(msg, () => {}); }
         function escapeHtml(text) { if (!text) return text; return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;"); }
         function handleEnter(e) { if (e.key === 'Enter') addToQueue(); }
-        
-        let audioCtx;
-        function initAudio() { if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)(); if (audioCtx.state === 'suspended') audioCtx.resume(); }
-        function playBeep() {
-            if (!audioCtx) initAudio();
-            const o = audioCtx.createOscillator(); const g = audioCtx.createGain();
-            o.connect(g); g.connect(audioCtx.destination);
-            o.type = 'square'; o.frequency.setValueAtTime(440, audioCtx.currentTime); o.frequency.exponentialRampToValueAtTime(880, audioCtx.currentTime + 0.1);
-            g.gain.setValueAtTime(0.5, audioCtx.currentTime); g.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 1);
-            o.start(); o.stop(audioCtx.currentTime + 1);
-        }
-
-        function openModal(message, confirmCallback) {
-            const modal = document.getElementById('custom-modal');
-            document.getElementById('modal-message').innerText = message;
-            document.getElementById('modal-confirm-btn').onclick = () => { confirmCallback(); closeModal(); };
-            modal.classList.remove('hidden');
-        }
+        let audioCtx; function initAudio() { if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)(); if (audioCtx.state === 'suspended') audioCtx.resume(); }
+        function playBeep() { if (!audioCtx) initAudio(); const o = audioCtx.createOscillator(); const g = audioCtx.createGain(); o.connect(g); g.connect(audioCtx.destination); o.type = 'square'; o.frequency.setValueAtTime(440, audioCtx.currentTime); o.frequency.exponentialRampToValueAtTime(880, audioCtx.currentTime + 0.1); g.gain.setValueAtTime(0.5, audioCtx.currentTime); g.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 1); o.start(); o.stop(audioCtx.currentTime + 1); }
+        function openModal(message, confirmCallback) { const modal = document.getElementById('custom-modal'); document.getElementById('modal-message').innerText = message; document.getElementById('modal-confirm-btn').onclick = () => { confirmCallback(); closeModal(); }; modal.classList.remove('hidden'); }
         function closeModal() { document.getElementById('custom-modal').classList.add('hidden'); }
-        function openForceEndModal(courtId) { 
-            if(!IS_ADMIN) return;
-            openModal(`確定要強制結束 ${courtId} 號球場？`, () => resetCourt(courtId)); 
-        }
-
+        function openForceEndModal(courtId) { if(!IS_ADMIN) return; openModal(`確定要強制結束 ${courtId} 號球場？`, () => resetCourt(courtId)); }
     </script>
 </body>
 </html>
-
