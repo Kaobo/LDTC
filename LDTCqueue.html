@@ -212,6 +212,12 @@
 
         if (IS_ADMIN) document.body.classList.add('is-admin');
 
+        // [New Security Feature] Client-Side Domain Guard
+
+        // 這是您要求的防護功能：如果不是在正式網址執行，直接切斷連線
+
+        const ALLOWED_DOMAIN = 'kaobo.github.io';
+
         // Initialize Firebase
         try {
             if (!firebaseConfig.apiKey || firebaseConfig.apiKey.includes("YOUR")) {
@@ -245,6 +251,36 @@
         document.addEventListener('DOMContentLoaded', () => {
             initCourtsUI(); 
             startClock();   
+
+            // [Security Check] 檢查是否為本機檔案或非授權網域
+
+            const currentHostname = window.location.hostname;
+
+            const isLocalFile = window.location.protocol === 'file:';
+
+            
+
+            if (isLocalFile) {
+
+                switchToOfflineMode("安全警告：偵測到本機檔案執行，已強制切斷雲端連線");
+
+                return;
+
+            }
+
+            
+
+            if (currentHostname !== ALLOWED_DOMAIN && currentHostname !== 'localhost') {
+
+                // 如果您希望連 localhost 開發時也擋掉，請把 && 後面的判斷拿掉
+
+                // 目前設定：只允許 GitHub Pages 和 Localhost (開發用)
+
+                switchToOfflineMode(`安全警告：非授權網域 (${currentHostname})，已切斷連線`);
+
+                return;
+
+            }
             
             if (isOfflineMode) {
                 switchToOfflineMode("初始化失敗，啟動單機模式");
@@ -669,6 +705,7 @@
     </script>
 </body>
 </html>
+
 
 
 
